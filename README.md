@@ -1,2 +1,2 @@
-qa_task
+Task for QA intern repository
 =======
