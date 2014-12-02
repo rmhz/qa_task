@@ -36,7 +36,7 @@ class GetTest(SimpleTest):
         self.assertEqual(getCandidatesList(self.connection)['status'], 200, 'GET test fail')
 
     def test_validCandidateAdd(self):
-        body = json.dumps({'name': "name_test", 'position': "pos_test"})
+        body = json.dumps({'name': 'name_test', 'position': "pos_test", "project":"LJKL"})
         header = {'Content-Type': 'application/json'}
         response = postCandidate(self.connection, header, body)
         self.assertEqual(response['status'], 201, 'POST test fail')
@@ -55,5 +55,36 @@ class GetTest(SimpleTest):
         cand_id = self.test_validCandidateAdd()
         self.assertEqual(deleteCandidate(self.connection, cand_id)['status'], 200)
 
-if __name__ == '__main__':
-    unittest.main()
+bodys = [json.dumps({'name': "name_test", 'position': "pos_test"}),
+         json.dumps({'position': "pos_test"}),
+         json.dumps({'name': "name_test"}),
+         json.dumps({})]
+headers = [{'Content-Type': 'application/json'},
+           {},
+           {'Content-Type': 'javascript'}]
+
+class AdvTest(SimpleTest):
+       
+    def test_invalidCandidateAdd(self):
+        body_list = [json.dumps({}),
+                     json.dumps({'position': "pos_test"}),
+                     json.dumps({'name': "name_test"}),
+                     json.dumps({'name': "name_test", 'position': "pos_test"}),
+                     json.dumps({'position': "P"*257}),
+                     json.dumps({'name': "N"*257}),
+                     json.dumps({'name': "n"*257, 'position': "p"*257})]
+        header_list = [{},
+                       {'Content-Type': 'javascript'},
+                       {'Content-Type': 'application/json'}]
+        header_body_list = list((x,y) for x in header_list for y in body_list)
+        for hb_pair in header_body_list:
+            self.assertEqual(postCandidate(self.connection, *hb_pair)['status'], 400, str(hb_pair))
+                 
+
+##if __name__ == '__main__':
+##    unittest.main()
+
+suite = unittest.TestLoader().loadTestsFromTestCase(AdvTest)
+unittest.TextTestRunner(verbosity=2).run(suite)
+
+
