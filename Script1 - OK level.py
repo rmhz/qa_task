@@ -1,12 +1,12 @@
 import httplib, unittest, json
 
-def getCandidatesList(connection):
-    connection.request("GET", "/candidates")
+def getCandidatesList(connection, header={}, body=""):
+    connection.request("GET", "/candidates", body, header)
     response = connection.getresponse()
     return {'status':response.status, 'header':response.getheaders(), 'body':response.read()}
 
-def getCandidate(connection, cand_id):
-    connection.request("GET", "/candidates/"+str(cand_id))
+def getCandidate(connection, cand_id, header={}, body=""):
+    connection.request("GET", "/candidates/"+str(cand_id), body, header)
     response = connection.getresponse()
     return {'status':response.status, 'header':response.getheaders(), 'body':response.read()}
 
@@ -15,8 +15,8 @@ def postCandidate(connection, header, body):
     response = connection.getresponse()
     return {'status':response.status, 'header':response.getheaders(), 'body':response.read()}
 
-def deleteCandidate(connection, cand_id):
-    connection.request("DELETE", "/candidates/"+str(cand_id))
+def deleteCandidate(connection, cand_id, header={}, body=""):
+    connection.request("DELETE", "/candidates/"+str(cand_id), body, header)
     response = connection.getresponse()
     return {'status':response.status, 'header':response.getheaders(), 'body':response.read()}    
 
@@ -28,6 +28,19 @@ class SimpleTest(unittest.TestCase):
         except:
             raise Exception("Connection error")
 
+        self.body_list = [json.dumps({}),
+                     json.dumps({'position': "pos_test"}),
+                     json.dumps({'name': "name_test"}),
+                     json.dumps({'position': "P"*257}),
+                     json.dumps({'name': "N"*257}),
+                     json.dumps({'name': "n"*257, 'position': "p"*257})]
+        self.header_list = [{},
+                           {'Content-Type': 'application/javascript'},
+                           {'Content-Type': 'application/json'},
+                            {'Content-Type': 'text/html'}]
+
+        self.longmessage = True
+
     def tearDown(self):
         self.connection.close()
 
@@ -36,10 +49,11 @@ class GetTest(SimpleTest):
         self.assertEqual(getCandidatesList(self.connection)['status'], 200, 'GET test fail')
 
     def test_validCandidateAdd(self):
-        body = json.dumps({'name': 'name_test', 'position': "pos_test", "project":"LJKL"})
+        body = json.dumps({'name': 'name_test', 'position': "pos_test"})
         header = {'Content-Type': 'application/json'}
         response = postCandidate(self.connection, header, body)
         self.assertEqual(response['status'], 201, 'POST test fail')
+##        print response
         return json.loads(response['body'])['candidate']['id']
 
     def test_getCandidate(self):
@@ -53,38 +67,55 @@ class GetTest(SimpleTest):
     
     def test_deleteCandidate(self):
         cand_id = self.test_validCandidateAdd()
-        self.assertEqual(deleteCandidate(self.connection, cand_id)['status'], 200)
+        response = deleteCandidate(self.connection, cand_id)
+##        print response
+        self.assertEqual(response['status'], 200)
 
-bodys = [json.dumps({'name': "name_test", 'position': "pos_test"}),
-         json.dumps({'position': "pos_test"}),
-         json.dumps({'name': "name_test"}),
-         json.dumps({})]
-headers = [{'Content-Type': 'application/json'},
-           {},
-           {'Content-Type': 'javascript'}]
 
 class AdvTest(SimpleTest):
        
     def test_invalidCandidateAdd(self):
-        body_list = [json.dumps({}),
-                     json.dumps({'position': "pos_test"}),
-                     json.dumps({'name': "name_test"}),
-                     json.dumps({'name': "name_test", 'position': "pos_test"}),
-                     json.dumps({'position': "P"*257}),
-                     json.dumps({'name': "N"*257}),
-                     json.dumps({'name': "n"*257, 'position': "p"*257})]
-        header_list = [{},
-                       {'Content-Type': 'javascript'},
-                       {'Content-Type': 'application/json'}]
-        header_body_list = list((x,y) for x in header_list for y in body_list)
+        header_body_list = list((x,y) for x in self.header_list for y in self.body_list)
         for hb_pair in header_body_list:
             self.assertEqual(postCandidate(self.connection, *hb_pair)['status'], 400, str(hb_pair))
+
+    def test_invalidCandidateGet(self):
+        self.assertEqual(getCandidate(self.connection, -1)['status'], 404)
+
+    def test_invalidCandidateGet_withBH(self):
+        header_body_list = list((x,y) for x in self.header_list for y in self.body_list)
+        for hb_pair in header_body_list:
+            self.assertEqual(getCandidate(self.connection, -1, *hb_pair)['status'], 404, str(hb_pair))
+
+    def test_invalidCandidateDelete(self):
+        self.assertEqual(deleteCandidate(self.connection, -1)['status'], 404)
+
+    def test_noCandidateDelete(self):
+        self.assertEqual(deleteCandidate(self.connection, None)['status'], 404)
                  
+    def test_invalidCandidateDelete_withBH(self):
+        header_body_list = list((x,y) for x in self.header_list for y in self.body_list)
+        for hb_pair in header_body_list:
+            self.assertEqual(deleteCandidate(self.connection, -1, *hb_pair)['status'], 404, str(hb_pair))
 
-##if __name__ == '__main__':
-##    unittest.main()
+    def test_validCandidateDelete_withBH(self):
+        body = json.dumps({'name': 'name_test', 'position': "pos_test"})
+        header = {'Content-Type': 'application/json'}
+        response = postCandidate(self.connection, header, body)
+        cand_id = json.loads(response['body'])['candidate']['id']
+        header_body_list = list((x,y) for x in self.header_list for y in self.body_list)[1:]
+        for hb_pair in header_body_list:
+            self.assertEqual(deleteCandidate(self.connection, cand_id, *hb_pair)['status'], 404, str(hb_pair))
 
-suite = unittest.TestLoader().loadTestsFromTestCase(AdvTest)
+    def test_deleteCandidatesList(self):
+        self.connection.request("DELETE", "/candidates")
+        response = self.connection.getresponse()
+        result = {'status':response.status, 'header':response.getheaders(), 'body':response.read()}
+        self.assertEqual(result['status'], 405)
+            
+
+suite = unittest.TestLoader().loadTestsFromTestCase(GetTest)
+suite.addTest(unittest.TestLoader().loadTestsFromTestCase(AdvTest))
 unittest.TextTestRunner(verbosity=2).run(suite)
 
 
