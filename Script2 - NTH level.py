@@ -130,4 +130,4 @@ class TestVerify():
 
 
 if __name__ == '__main__':
-    pytest.main([__file__, '-v',"--capture=sys", '--collect-only'])
+    pytest.main([__file__, '-v',"--capture=sys"])
