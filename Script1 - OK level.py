@@ -117,5 +117,7 @@ class TestQAAdv(TestFixture):
         self.connection.request("DELETE", "/candidates")
         response = self.connection.getresponse()
         result = {'status':response.status, 'header':response.getheaders(), 'body':response.read()}
-        assert (result['status'], 405)
+        assert (result['status'] == 405)
 
+if __name__ == '__main__':
+    pytest.main([__file__, '-v',"--capture=sys"])
