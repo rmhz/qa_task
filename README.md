@@ -8,3 +8,5 @@ Python Libs required:
   - requests
   - json
   - pytest
+
+dm_script.sh - datamining bash script, datamining.log must be in the same folder

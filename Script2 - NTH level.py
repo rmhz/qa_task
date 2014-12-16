@@ -37,7 +37,7 @@ class Candidate():
             self.name = 'name_test'
             self.position = 'pos_test'
         else:            
-            if (type(data) == 'str') or (type(data) == type(u'')):
+            if type(data) == type(u''):
                 data_dict = json.loads(data).pop('candidate')
                 self.id = data_dict['id']
                 self.name = data_dict['name']
@@ -69,6 +69,7 @@ class Candidate():
 
 
 class TestVerify():
+    ##Get list of candidates as candidate objects from server 
     def getCandidatesObjList(self):
         result=[]
         candidates = json.loads(getCandidate()['body'])['candidates']
@@ -76,13 +77,15 @@ class TestVerify():
             result.append(Candidate(cand_info))
         return result
 
+    ##Get list of candidate ids from server
     def getCandidatesIdList(self):
         result=[]
         candidates = json.loads(getCandidate()['body'])['candidates']
         for cand_info in candidates:
-            result.append(Candidate(cand_info)['id'])
+            result.append(Candidate(cand_info).id)
         return result
-
+ 
+    ##Test for valid candidate data in server response 
     def test_validCandidateServerResponse(self):
         cand_a = Candidate()
         response = postCandidate(**(cand_a.makeRequest()))
@@ -91,7 +94,7 @@ class TestVerify():
         cand_b = Candidate(response['body'])
         assert (cand_a == cand_b)
 
-
+    ##Test that valid candidate is added to server candidates list
     def test_validCandidateAddWithVerif(self):
         cand_a = Candidate()
         response = postCandidate(**(cand_a.makeRequest()))
@@ -100,6 +103,7 @@ class TestVerify():
         cand_list = self.getCandidatesObjList()
         assert (cand_a in cand_list)
 
+    ##Test that correct candidate is returned by request
     def test_validCandidateGetWithVerif(self):
         cand_a = Candidate()
         response = postCandidate(**(cand_a.makeRequest()))
@@ -109,17 +113,16 @@ class TestVerify():
         cand_b = Candidate(response['body'])
         assert (cand_a == cand_b)
 
+    ##Test that candidate is actually deleted from list
     def test_validCandidateDeleteWithVerif(self):
-        cand_a = Candidate()
-        response = postCandidate(**(cand_a.makeRequest()))
-        cand_id = json.loads(response['body'])['candidate']['id']
-        cand_a.addId(cand_id)
-        
+        cands = self.getCandidatesObjList()
+        cand_a = random.choice(cands)
+        cand_id = cand_a.id
         response = deleteCandidate(cand_id)
-        deleteCandidate(cand_id)
-        cand_list = self.getCandidatesObjList()
-        assert (cand_a not in cand_list)
-        
+        cand_ids = self.getCandidatesIdList()
+        assert (cand_id not in cand_ids)
+
+    ##Test that server correctly returns random candidate    
     @pytest.mark.parametrize('', [[]]*10)
     def test_randomValidCandidateGet(self):
         cands = self.getCandidatesObjList()
